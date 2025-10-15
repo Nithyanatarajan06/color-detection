@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Color Detector</title>
+<style>
+/* --- BASIC STYLES --- */
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg,#667eea,#764ba2); min-height:100vh; display:flex; justify-content:center; align-items:center; padding:20px; }
+.container { width:100%; max-width:1000px; }
+
+/* --- LOGIN PAGE --- */
+.login-page, .app-page { background:white; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,0.3); padding:60px 40px; text-align:center; }
+.login-page.hidden, .app-page.hidden { display:none; }
+.logo { font-size:48px; margin-bottom:20px; }
+.login-page h1 { color:#333; margin-bottom:10px; font-size:32px; }
+.login-page p { color:#666; margin-bottom:40px; font-size:16px; }
+.form-group { margin-bottom:20px; text-align:left; }
+.form-group label { display:block; margin-bottom:8px; color:#333; font-weight:600; font-size:14px; }
+.form-group input { width:100%; padding:14px 16px; border:2px solid #e0e0e0; border-radius:10px; font-size:16px; transition:border-color 0.3s; }
+.form-group input:focus { outline:none; border-color:#667eea; }
+.form-group.error input { border-color:#ff6b6b; }
+.error-message { color:#ff6b6b; font-size:13px; margin-top:6px; display:none; }
+.error-message.show { display:block; }
+.login-btn { width:100%; padding:14px; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; margin-top:20px; transition:0.2s; }
+.login-btn:hover { transform:translateY(-2px); box-shadow:0 10px 20px rgba(102,126,234,0.4); }
+.login-btn:active { transform:translateY(0); }
+
+/* --- APP PAGE --- */
+.header { background:linear-gradient(135deg,#667eea,#764ba2); color:white; padding:30px 40px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px; }
+.header h1 { font-size:28px; }
+.logout-btn { padding:10px 20px; background:rgba(255,255,255,0.2); color:white; border:2px solid white; border-radius:8px; cursor:pointer; font-weight:600; transition:all 0.3s; }
+.logout-btn:hover { background:rgba(255,255,255,0.3); }
+.content { display:grid; grid-template-columns:1fr 1fr; gap:40px; padding:40px; }
+@media (max-width:768px) { .content { grid-template-columns:1fr; gap:30px; padding:20px; } .header { padding:20px; font-size:20px; } .login-page { padding:40px 20px; } }
+.section-title { font-size:20px; color:#333; margin-bottom:20px; font-weight:600; }
+
+/* --- UPLOAD AREA --- */
+.upload-area { border:3px dashed #667eea; border-radius:15px; padding:40px 20px; text-align:center; cursor:pointer; transition:all 0.3s; background:#f8f9ff; }
+.upload-area:hover { background:#f0f2ff; border-color:#764ba2; }
+.upload-area.dragover { background:#e8ebff; border-color:#764ba2; }
+.upload-icon { font-size:48px; margin-bottom:10px; }
+#imageInput { display:none; }
+.image-preview { margin-top:20px; border-radius:15px; overflow:hidden; display:none; }
+.image-preview.show { display:block; }
+.image-preview img { width:100%; height:auto; cursor:crosshair; display:block; }
+
+/* --- COLOR INFO --- */
+.color-preview { width:100%; height:200px; border-radius:15px; background:#f0f0f0; border:2px solid #e0e0e0; margin-bottom:20px; box-shadow:0 5px 15px rgba(0,0,0,0.1); transition:all 0.3s; }
+.color-details { background:#f9f9f9; padding:20px; border-radius:15px; margin-bottom:20px; }
+.detail-row { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #e0e0e0; }
+.detail-row:last-child { border-bottom:none; }
+.detail-label { color:#666; font-weight:600; font-size:13px; }
+.detail-value { font-family:'Courier New', monospace; color:#333; font-weight:500; font-size:14px; word-break:break-all; }
+.color-name { font-size:20px; color:#667eea; font-weight:700; margin-bottom:10px; }
+.action-buttons { display:flex; gap:10px; }
+.btn { flex:1; padding:12px 16px; border:none; border-radius:10px; font-weight:600; cursor:pointer; transition:all 0.3s; font-size:14px; }
+.btn-primary { background:linear-gradient(135deg,#667eea,#764ba2); color:white; }
+.btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 15px rgba(102,126,234,0.4); }
+.btn-secondary { background:#f0f0f0; color:#333; border:2px solid #e0e0e0; }
+.btn-secondary:hover { background:#e8e8e8; }
+.btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+/* --- COPY FEEDBACK --- */
+.copy-feedback { position:fixed; bottom:20px; right:20px; background:#333; color:white; padding:12px 20px; border-radius:8px; opacity:0; transition:opacity 0.3s; pointer-events:none; }
+.copy-feedback.show { opacity:1; }
+
+/* --- DARK MODE --- */
+body.dark-mode { background: linear-gradient(135deg,#1f1f1f,#2b2b2b); color:#f0f0f0; }
+body.dark-mode .login-page, body.dark-mode .app-page { background:#2c2c2c; color:#f0f0f0; }
+body.dark-mode h1, body.dark-mode .section-title, body.dark-mode .detail-label, body.dark-mode .detail-value, body.dark-mode .color-name { color:#f0f0f0; }
+body.dark-mode input { background:#3a3a3a; color:#fff; border-color:#555; }
+body.dark-mode .upload-area { background:#3a3a3a; border-color:#777; }
+body.dark-mode .color-details { background:#3a3a3a; }
+body.dark-mode .btn-secondary { background:#555; color:#fff; border-color:#666; }
+body.dark-mode .header { background:linear-gradient(135deg,#444,#666); }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- LOGIN -->
+  <div class="login-page" id="loginPage">
+    <div class="logo">🎨</div>
+    <h1>Color Detector</h1>
+    <p>Detect colors from images with precision</p>
+    <form id="loginForm">
+      <div class="form-group"><label>Username</label><input id="username" required><div class="error-message"></div></div>
+      <div class="form-group"><label>Password</label><input type="password" id="password" required><div class="error-message"></div></div>
+      <button type="submit" class="login-btn">Login</button>
+    </form>
+  </div>
+
+  <!-- APP -->
+  <div class="app-page hidden" id="appPage">
+    <div class="header">
+      <h1>🎨 Color Detector</h1>
+      <div>
+        <button class="logout-btn" id="logoutBtn">Logout</button>
+        <button class="logout-btn" id="darkModeToggle">🌙 Dark Mode</button>
+      </div>
+    </div>
+    <div class="content">
+      <!-- UPLOAD -->
+      <div>
+        <h2 class="section-title">Upload Image</h2>
+        <div class="upload-area" id="uploadArea">
+          <div class="upload-icon">📸</div>
+          <p>Click to upload or <span class="highlight">drag and drop</span></p>
+          <p style="font-size:12px;color:#999;">PNG, JPG, GIF up to 10MB</p>
+        </div>
+        <input type="file" id="imageInput" accept="image/*">
+        <div class="image-preview" id="imagePreview"><img id="previewImage"></div>
+      </div>
+
+      <!-- COLOR INFO -->
+      <div>
+        <h2 class="section-title">Detected Color</h2>
+        <div class="color-preview" id="colorPreview"></div>
+        <div class="color-details" id="colorDetails"><div class="placeholder-text">Upload an image and click on it to detect colors</div></div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" id="copyBtn" disabled>Copy Hex</button>
+          <button class="btn btn-secondary" id="downloadBtn" disabled>Download Info</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+
+<script>
+    const colors = [
+  { name: 'AbsoluteZero', hex: '#0048BA', rgb: [0, 72, 186] },
+  { name: 'AcidGreen', hex: '#B0BF1A', rgb: [176, 191, 26] },
+  { name: 'Aero', hex: '#7CB9E8', rgb: [124, 185, 232] },
+  { name: 'AeroBlue', hex: '#C9FFE5', rgb: [201, 255, 229] },
+  { name: 'AfricanViolet', hex: '#B284BE', rgb: [178, 132, 190] },
+  { name: 'AirForceBlue', hex: '#5D8AA8', rgb: [93, 138, 168] },
+  { name: 'AirSuperiorityBlue', hex: '#72A0C1', rgb: [114, 160, 193] },
+  { name: 'Alabaster', hex: '#F2F0E6', rgb: [242, 240, 230] },
+  { name: 'AliceBlue', hex: '#F0F8FF', rgb: [240, 248, 255] },
+  { name: 'AlizarinCrimson', hex: '#E32636', rgb: [227, 38, 54] },
+  { name: 'AlloyOrange', hex: '#C46210', rgb: [196, 98, 16] },
+  { name: 'Almond', hex: '#EFDECD', rgb: [239, 222, 205] },
+  { name: 'Amaranth', hex: '#E52B50', rgb: [229, 43, 80] },
+  { name: 'Amber', hex: '#FFBF00', rgb: [255, 191, 0] },
+  { name: 'Amethyst', hex: '#9966CC', rgb: [153, 102, 204] },
+  { name: 'AndroidGreen', hex: '#A4C639', rgb: [164, 198, 57] },
+  { name: 'AntiqueBrass', hex: '#CD9575', rgb: [205, 149, 117] },
+  { name: 'AntiqueFuchsia', hex: '#915C83', rgb: [145, 92, 131] },
+  { name: 'AntiqueWhite', hex: '#FAEBD7', rgb: [250, 235, 215] },
+  { name: 'AppleGreen', hex: '#8DB600', rgb: [141, 182, 0] },
+  { name: 'Apricot', hex: '#FBCEB1', rgb: [251, 206, 177] },
+  { name: 'Aqua', hex: '#00FFFF', rgb: [0, 255, 255] },
+  { name: 'Aquamarine', hex: '#7FFFD4', rgb: [127, 255, 212] },
+  { name: 'ArcticLime', hex: '#D0FF14', rgb: [208, 255, 20] },
+  { name: 'ArmyGreen', hex: '#4B5320', rgb: [75, 83, 32] },
+  { name: 'Artichoke', hex: '#8F9779', rgb: [143, 151, 121] },
+  { name: 'ArylideYellow', hex: '#E9D66B', rgb: [233, 214, 107] },
+  { name: 'AshGray', hex: '#B2BEB5', rgb: [178, 190, 181] },
+  { name: 'Asparagus', hex: '#87A96B', rgb: [135, 169, 107] },
+  { name: 'AtomicTangerine', hex: '#FF9966', rgb: [255, 153, 102] },
+  { name: 'Auburn', hex: '#6A1E1D', rgb: [106, 30, 29] },
+  { name: 'Aureolin', hex: '#F9A800', rgb: [249, 168, 0] },
+  { name: 'AuroMetalSaurus', hex: '#6C7C7C', rgb: [108, 124, 124] },
+  { name: 'Azure', hex: '#007FFF', rgb: [0, 127, 255] },
+  { name: 'AzureMist', hex: '#F0FFFF', rgb: [240, 255, 255] },
+  { name: 'BabyBlue', hex: '#89CFF0', rgb: [137, 207, 240] },
+  { name: 'BabyPink', hex: '#F4C2C2', rgb: [244, 194, 194] },
+  { name: 'BabyPowder', hex: '#FEFEFA', rgb: [254, 254, 250] },
+  { name: 'BakerMillerPink', hex: '#FF91AF', rgb: [255, 145, 175] },
+  { name: 'BananaMania', hex: '#FAE7B5', rgb: [250, 231, 181] },
+  { name: 'BeauBlue', hex: '#BCD4E6', rgb: [188, 212, 230] },
+  { name: 'Beige', hex: '#F5F5DC', rgb: [245, 245, 220] },
+  { name: 'BdazzledBlue', hex: '#2E5894', rgb: [46, 88, 148] },
+  { name: 'BigDipORuby', hex: '#9C2542', rgb: [156, 37, 66] },
+  { name: 'Bisque', hex: '#FFE4C4', rgb: [255, 228, 196] },
+  { name: 'Bistre', hex: '#3D2B1F', rgb: [61, 43, 31] },
+  { name: 'BistreBrown', hex: '#967117', rgb: [150, 113, 23] },
+  { name: 'BitterLime', hex: '#BFFF00', rgb: [191, 255, 0] },
+  { name: 'Black', hex: '#000000', rgb: [0, 0, 0] },
+  { name: 'BlanchedAlmond', hex: '#FFEBCD', rgb: [255, 235, 205] },
+  { name: 'Blue', hex: '#0000FF', rgb: [0, 0, 255] },
+  { name: 'BlueBell', hex: '#A2A2D0', rgb: [162, 162, 208] },
+  { name: 'BlueCrayola', hex: '#1F75FE', rgb: [31, 117, 254] },
+  { name: 'BlueMunsell', hex: '#0093B2', rgb: [0, 147, 178] },
+  { name: 'BluePantone', hex: '#0018A8', rgb: [0, 24, 168] },
+  { name: 'BluePigment', hex: '#333399', rgb: [51, 51, 153] },
+  { name: 'BlueRYB', hex: '#0247FE', rgb: [2, 71, 254] },
+  { name: 'BlueViolet', hex: '#8A2BE2', rgb: [138, 43, 226] },
+  { name: 'Blush', hex: '#DE5D83', rgb: [222, 93, 131] },
+  { name: 'Bole', hex: '#79443B', rgb: [121, 68, 59] },
+  { name: 'BondiBlue', hex: '#0095B6', rgb: [0, 149, 182] },
+  { name: 'Bone', hex: '#E3DAC9', rgb: [227, 218, 201] },
+  { name: 'BostonUniversityRed', hex: '#CC0000', rgb: [204, 0, 0] },
+  { name: 'BottleGreen', hex: '#006A4E', rgb: [0, 106, 78] },
+  { name: 'Brandy', hex: '#997A8D', rgb: [153, 122, 141] },
+  { name: 'Brass', hex: '#B5A642', rgb: [181, 166, 66] },
+  { name: 'BrickRed', hex: '#CB4154', rgb: [203, 65, 84] },
+  { name: 'BrightGreen', hex: '#00FF00', rgb: [0, 255, 0] },
+  { name: 'BrightLavender', hex: '#BF94E4', rgb: [191, 148, 228] },
+  { name: 'BrightLilac', hex: '#D891EF', rgb: [216, 145, 239] },
+  { name: 'BrightMaroon', hex: '#C32148', rgb: [195, 33, 72] },
+  { name: 'BrightPink', hex: '#FF007F', rgb: [255, 0, 127] },
+  { name: 'BrightTurquoise', hex: '#08E8DE', rgb: [8, 232, 222] },
+  { name: 'BrightUranium', hex: '#A6D608', rgb: [166, 214, 8] },
+  { name: 'BrilliantAzure', hex: '#3399FF', rgb: [51, 153, 255] },
+  { name: 'BrilliantLavender', hex: '#F4BBFF', rgb: [244, 187, 255] },
+  { name: 'BrilliantRose', hex: '#FF55A3', rgb: [255, 85, 163] },
+  { name: 'BrinkPink', hex: '#FB607F', rgb: [251, 96, 127] },
+  { name: 'BritishRacingGreen', hex: '#004B87', rgb: [0, 75, 135] },
+    { name: 'Bronze', hex: '#CD7F32', rgb: [205, 127, 50] },
+  { name: 'Brown', hex: '#964B00', rgb: [150, 75, 0] },
+  { name: 'BrownSugar', hex: '#AF6E4D', rgb: [175, 110, 77] },
+  { name: 'BrunswickGreen', hex: '#1B4D3E', rgb: [27, 77, 62] },
+  { name: 'Bubbles', hex: '#E7FEFF', rgb: [231, 254, 255] },
+  { name: 'BudGreen', hex: '#7BB661', rgb: [123, 182, 97] },
+  { name: 'Buff', hex: '#F0DC82', rgb: [240, 220, 130] },
+  { name: 'BulgarianRose', hex: '#480607', rgb: [72, 6, 7] },
+  { name: 'Burgundy', hex: '#800020', rgb: [128, 0, 32] },
+  { name: 'Burlywood', hex: '#DEB887', rgb: [222, 184, 135] },
+  { name: 'BurntOrange', hex: '#CC5500', rgb: [204, 85, 0] },
+  { name: 'BurntSienna', hex: '#E97451', rgb: [233, 116, 81] },
+  { name: 'BurntUmber', hex: '#8A3324', rgb: [138, 51, 36] },
+  { name: 'Byzantine', hex: '#BD33A4', rgb: [189, 51, 164] },
+  { name: 'Byzantium', hex: '#702963', rgb: [112, 41, 99] },
+  { name: 'Cadet', hex: '#536872', rgb: [83, 104, 114] },
+  { name: 'CadetBlue', hex: '#5F9EA0', rgb: [95, 158, 160] },
+  { name: 'CadetGrey', hex: '#91A3B0', rgb: [145, 163, 176] },
+  { name: 'CadmiumGreen', hex: '#006B3C', rgb: [0, 107, 60] },
+  { name: 'CadmiumOrange', hex: '#ED872D', rgb: [237, 135, 45] },
+  { name: 'CadmiumRed', hex: '#E30022', rgb: [227, 0, 34] },
+  { name: 'CadmiumYellow', hex: '#FFF600', rgb: [255, 246, 0] },
+  { name: 'CafeAuLait', hex: '#A67B5B', rgb: [166, 123, 91] },
+  { name: 'CafeNoir', hex: '#4B3621', rgb: [75, 54, 33] },
+  { name: 'CalPolyPomonaGreen', hex: '#1E4D2B', rgb: [30, 77, 43] },
+  { name: 'CambridgeBlue', hex: '#A3C1AD', rgb: [163, 193, 173] },
+  { name: 'Camel', hex: '#C19A6B', rgb: [193, 154, 107] },
+  { name: 'CameoPink', hex: '#EFBBCC', rgb: [239, 187, 204] },
+  { name: 'CamouflageGreen', hex: '#78866B', rgb: [120, 134, 107] },
+  { name: 'Canary', hex: '#FFFF99', rgb: [255, 255, 153] },
+  { name: 'CanaryYellow', hex: '#FFEF00', rgb: [255, 239, 0] },
+  { name: 'CandyAppleRed', hex: '#FF0800', rgb: [255, 8, 0] },
+  { name: 'CandyPink', hex: '#E4717A', rgb: [228, 113, 122] },
+  { name: 'Capri', hex: '#00BFFF', rgb: [0, 191, 255] },
+  { name: 'CaputMortuum', hex: '#592720', rgb: [89, 39, 32] },
+  { name: 'Cardinal', hex: '#C41E3A', rgb: [196, 30, 58] },
+  { name: 'CaribbeanGreen', hex: '#00CC99', rgb: [0, 204, 153] },
+  { name: 'Carmine', hex: '#960018', rgb: [150, 0, 24] },
+  { name: 'CarmineM-P', hex: '#D70040', rgb: [215, 0, 64] },
+  { name: 'CarminePink', hex: '#EB4C42', rgb: [235, 76, 66] },
+  { name: 'CarmineRed', hex: '#FF0038', rgb: [255, 0, 56] },
+  { name: 'CarnationPink', hex: '#FFA6C9', rgb: [255, 166, 201] },
+  { name: 'Carnelian', hex: '#B31B1B', rgb: [179, 27, 27] },
+  { name: 'CarolinaBlue', hex: '#56A0D3', rgb: [86, 160, 211] },
+  { name: 'CarrotOrange', hex: '#ED9121', rgb: [237, 145, 33] },
+  { name: 'CastletonGreen', hex: '#00563F', rgb: [0, 86, 63] },
+  { name: 'CatalinaBlue', hex: '#062A78', rgb: [6, 42, 120] },
+  { name: 'Catawba', hex: '#703642', rgb: [112, 54, 66] },
+  { name: 'CedarChest', hex: '#C95A49', rgb: [201, 90, 73] },
+  { name: 'Ceil', hex: '#92A1CF', rgb: [146, 161, 207] },
+  { name: 'Celadon', hex: '#ACE1AF', rgb: [172, 225, 175] },
+  { name: 'CeladonBlue', hex: '#007BA7', rgb: [0, 123, 167] },
+  { name: 'CeladonGreen', hex: '#2F847C', rgb: [47, 132, 124] },
+  { name: 'Celeste', hex: '#B2FFFF', rgb: [178, 255, 255] },
+  { name: 'CelestialBlue', hex: '#4997D0', rgb: [73, 151, 208] },
+  { name: 'Cerise', hex: '#DE3163', rgb: [222, 49, 99] },
+  { name: 'CerisePink', hex: '#EC3B83', rgb: [236, 59, 131] },
+  { name: 'Cerulean', hex: '#007BA7', rgb: [0, 123, 167] },
+  { name: 'CeruleanBlue', hex: '#2A52BE', rgb: [42, 82, 190] },
+  { name: 'Chamoisee', hex: '#A0785A', rgb: [160, 120, 90] },
+  { name: 'Champagne', hex: '#F7E7CE', rgb: [247, 231, 206] },
+  { name: 'Charcoal', hex: '#36454F', rgb: [54, 69, 79] },
+  { name: 'CharlestonGreen', hex: '#232B2B', rgb: [35, 43, 43] },
+  { name: 'CharmPink', hex: '#E68FAC', rgb: [230, 143, 172] },
+  { name: 'Chartreuse', hex: '#7FFF00', rgb: [127, 255, 0] },
+  { name: 'Cherry', hex: '#DE3163', rgb: [222, 49, 99] },
+  { name: 'CherryBlossomPink', hex: '#FFB7C5', rgb: [255, 183, 197] },
+  { name: 'Chestnut', hex: '#954535', rgb: [149, 69, 53] },
+  { name: 'ChinaPink', hex: '#DE6FA1', rgb: [222, 111, 161] },
+  { name: 'ChinaRose', hex: '#A8516E', rgb: [168, 81, 110] },
+  { name: 'ChineseRed', hex: '#AA381E', rgb: [170, 56, 30] },
+  { name: 'ChineseViolet', hex: '#856088', rgb: [133, 96, 136] },
+  { name: 'ChlorophyllGreen', hex: '#4AFF00', rgb: [74, 255, 0] },
+  { name: 'Chocolate', hex: '#7B3F00', rgb: [123, 63, 0] },
+  { name: 'ChromeYellow', hex: '#FFA700', rgb: [255, 167, 0] },
+  { name: 'Cinereous', hex: '#98817B', rgb: [152, 129, 123] },
+  { name: 'Cinnabar', hex: '#E34234', rgb: [227, 66, 52] },
+  { name: 'Cinnamon', hex: '#D2691E', rgb: [210, 105, 30] },
+  { name: 'Citrine', hex: '#E4D00A', rgb: [228, 208, 10] },
+  { name: 'ClassicRose', hex: '#FBCCE7', rgb: [251, 204, 231] },
+  { name: 'Cobalt', hex: '#0047AB', rgb: [0, 71, 171] },
+  { name: 'CocoaBrown', hex: '#D2691E', rgb: [210, 105, 30] },
+  { name: 'Coffee', hex: '#6F4E37', rgb: [111, 78, 55] },
+  { name: 'ColumbiaBlue', hex: '#C4D8E2', rgb: [196, 216, 226] },
+  { name: 'CoolBlack', hex: '#002E63', rgb: [0, 46, 99] },
+  { name: 'CoolGrey', hex: '#8C92AC', rgb: [140, 146, 172] },
+  { name: 'Copper', hex: '#B87333', rgb: [184, 115, 51] },
+  { name: 'CopperCrayola', hex: '#DA8A67', rgb: [218, 138, 103] },
+  { name: 'CopperRed', hex: '#CB6D51', rgb: [203, 109, 81] },
+  { name: 'CopperRose', hex: '#996666', rgb: [153, 102, 102] },
+  { name: 'Coquelicot', hex: '#FF3800', rgb: [255, 56, 0] },
+  { name: 'Coral', hex: '#FF7F50', rgb: [255, 127, 80] },
+  { name: 'CoralPink', hex: '#F88379', rgb: [248, 131, 121] },
+  { name: 'CoralRed', hex: '#FF4040', rgb: [255, 64, 64] },
+  { name: 'Cordovan', hex: '#893F45', rgb: [137, 63, 69] },
+  { name: 'Corn', hex: '#FBEC5D', rgb: [251, 236, 93] },
+  { name: 'CornellRed', hex: '#B31B1B', rgb: [179, 27, 27] },
+  { name: 'CornflowerBlue', hex: '#6495ED', rgb: [100, 149, 237] },
+  { name: 'Cornsilk', hex: '#FFF8DC', rgb: [255, 248, 220] },
+  { name: 'CosmicCobalt', hex: '#2E2D88', rgb: [46, 45, 136] },
+  { name: 'CosmicLatte', hex: '#FFF8E7', rgb: [255, 248, 231] },
+  { name: 'CoyoteBrown', hex: '#81613C', rgb: [129, 97, 60] },
+  { name: 'CottonCandy', hex: '#FFBCD9', rgb: [255, 188, 217] },
+  { name: 'Cream', hex: '#FFFDD0', rgb: [255, 253, 208] },
+  { name: 'Crimson', hex: '#DC143C', rgb: [220, 20, 60] },
+  { name: 'CrimsonUA', hex: '#990000', rgb: [153, 0, 0] },
+  { name: 'CrimsonRed', hex: '#990000', rgb: [153, 0, 0] },
+  { name: 'Cultured', hex: '#F5F5F5', rgb: [245, 245, 245] },
+  { name: 'Cyan', hex: '#00FFFF', rgb: [0, 255, 255] },
+  { name: 'CyanProcess', hex: '#00B7EB', rgb: [0, 183, 235] },
+  { name: 'CyberGrape', hex: '#58427C', rgb: [88, 66, 124] },
+  { name: 'CyberYellow', hex: '#FFD300', rgb: [255, 211, 0] },
+  { name: 'Cyclamen', hex: '#F56FA1', rgb: [245, 111, 161] },
+  { name: 'DarkBlue', hex: '#00008B', rgb: [0, 0, 139] },
+  { name: 'DarkBrown', hex: '#654321', rgb: [101, 67, 33] },
+  { name: 'DarkByzantium', hex: '#5D3954', rgb: [93, 57, 84] },
+  { name: 'DarkCandyAppleRed', hex: '#A40000', rgb: [164, 0, 0] },
+  { name: 'DarkCerulean', hex: '#08457E', rgb: [8, 69, 126] },
+  { name: 'DarkChestnut', hex: '#986960', rgb: [152, 105, 96] },
+  { name: 'DarkCoral', hex: '#CD5B45', rgb: [205, 91, 69] },
+  { name: 'DarkCyan', hex: '#008B8B', rgb: [0, 139, 139] },
+  { name: 'DarkElectricBlue', hex: '#536878', rgb: [83, 104, 120] },
+  { name: 'DarkGoldenrod', hex: '#B8860B', rgb: [184, 134, 11] },
+  { name: 'DarkGray', hex: '#A9A9A9', rgb: [169, 169, 169] },
+  { name: 'DarkGreen', hex: '#006400', rgb: [0, 100, 0] },
+  { name: 'DarkImperialBlue', hex: '#00416A', rgb: [0, 65, 106] },
+  { name: 'DarkJungleGreen', hex: '#1A2421', rgb: [26, 36, 33] },
+  { name: 'DarkKhaki', hex: '#BDB76B', rgb: [189, 183, 107] },
+  { name: 'DarkLavender', hex: '#734F96', rgb: [115, 79, 150] },
+  { name: 'DarkLiver', hex: '#534B4F', rgb: [83, 75, 79] },
+  { name: 'DarkMagenta', hex: '#8B008B', rgb: [139, 0, 139] },
+  { name: 'DarkMediumGray', hex: '#A9A9A9', rgb: [169, 169, 169] },
+  { name: 'DarkMidnightBlue', hex: '#003366', rgb: [0, 51, 102] },
+  { name: 'DarkOliveGreen', hex: '#556B2F', rgb: [85, 107, 47] },
+  { name: 'DarkOrange', hex: '#FF8C00', rgb: [255, 140, 0] },
+  { name: 'DarkOrchid', hex: '#9932CC', rgb: [153, 50, 204] },
+  { name: 'DarkPastelBlue', hex: '#779ECB', rgb: [119, 158, 203] },
+  { name: 'DarkPastelGreen', hex: '#03C03C', rgb: [3, 192, 60] },
+  { name: 'DarkPastelPurple', hex: '#966FD6', rgb: [150, 111, 214] },
+  { name: 'DarkPastelRed', hex: '#C23B22', rgb: [194, 59, 34] },
+  { name: 'DarkPink', hex: '#E75480', rgb: [231, 84, 128] },
+  { name: 'DarkPowderBlue', hex: '#003399', rgb: [0, 51, 153] },
+  { name: 'DarkRaspberry', hex: '#872657', rgb: [135, 38, 87] },
+  { name: 'DarkRed', hex: '#8B0000', rgb: [139, 0, 0] },
+  { name: 'DarkSalmon', hex: '#E9967A', rgb: [233, 150, 122] },
+  { name: 'DarkScarlet', hex: '#560319', rgb: [86, 3, 25] },
+  { name: 'DarkSeaGreen', hex: '#8FBC8F', rgb: [143, 188, 143] },
+  { name: 'DarkSienna', hex: '#3C1414', rgb: [60, 20, 20] },
+  { name: 'DarkSlateBlue', hex: '#483D8B', rgb: [72, 61, 139] },
+  { name: 'DarkSlateGray', hex: '#2F4F4F', rgb: [47, 79, 79] },
+  { name: 'DarkSpringGreen', hex: '#177245', rgb: [23, 114, 69] },
+  { name: 'DarkTan', hex: '#918151', rgb: [145, 129, 81] },
+  { name: 'DarkTangerine', hex: '#FFA812', rgb: [255, 168, 18] },
+  { name: 'DarkTaupe', hex: '#483C32', rgb: [72, 60, 50] },
+  { name: 'DarkTerraCotta', hex: '#CC4E5C', rgb: [204, 78, 92] },
+  { name: 'DarkTurquoise', hex: '#00CED1', rgb: [0, 206, 209] },
+  { name: 'DarkViolet', hex: '#9400D3', rgb: [148, 0, 211] },
+  { name: 'DartmouthGreen', hex: '#00703C', rgb: [0, 112, 60] },
+  { name: 'DavyGrey', hex: '#555555', rgb: [85, 85, 85] },
+  { name: 'DebianRed', hex: '#D70A53', rgb: [215, 10, 83] },
+    { name: 'DeepCerise', hex: '#DA3287', rgb: [218, 50, 135] },
+  { name: 'DeepChampagne', hex: '#FAD6A5', rgb: [250, 214, 165] },
+  { name: 'DeepChestnut', hex: '#B94E48', rgb: [185, 78, 72] },
+  { name: 'DeepCoffee', hex: '#704241', rgb: [112, 66, 65] },
+  { name: 'DeepFuchsia', hex: '#C154C1', rgb: [193, 84, 193] },
+  { name: 'DeepJungleGreen', hex: '#004B49', rgb: [0, 75, 73] },
+  { name: 'DeepKoamaru', hex: '#333366', rgb: [51, 51, 102] },
+  { name: 'DeepLemon', hex: '#F5C71A', rgb: [245, 199, 26] },
+  { name: 'DeepLilac', hex: '#9955BB', rgb: [153, 85, 187] },
+  { name: 'DeepMagenta', hex: '#CC00CC', rgb: [204, 0, 204] },
+  { name: 'DeepPink', hex: '#FF1493', rgb: [255, 20, 147] },
+  { name: 'DeepSaffron', hex: '#FF9933', rgb: [255, 153, 51] },
+  { name: 'DeepSkyBlue', hex: '#00BFFF', rgb: [0, 191, 255] },
+  { name: 'DeepSpaceSparkle', hex: '#4A646C', rgb: [74, 100, 108] },
+  { name: 'DeepTaupe', hex: '#7E5E60', rgb: [126, 94, 96] },
+  { name: 'Denim', hex: '#1560BD', rgb: [21, 96, 189] },
+  { name: 'Desert', hex: '#C19A6B', rgb: [193, 154, 107] },
+  { name: 'DesertSand', hex: '#EDC9AF', rgb: [237, 201, 175] },
+  { name: 'DimGray', hex: '#696969', rgb: [105, 105, 105] },
+  { name: 'DingyDungeon', hex: '#C53151', rgb: [197, 49, 81] },
+  { name: 'DodgerBlue', hex: '#1E90FF', rgb: [30, 144, 255] },
+  { name: 'DogwoodRose', hex: '#D71868', rgb: [215, 24, 104] },
+  { name: 'DollarBill', hex: '#85BB65', rgb: [133, 187, 101] },
+  { name: 'Drab', hex: '#967117', rgb: [150, 113, 23] },
+  { name: 'DukeBlue', hex: '#00009C', rgb: [0, 0, 156] },
+  { name: 'DustStorm', hex: '#E5CCC9', rgb: [229, 204, 201] },
+  { name: 'DutchWhite', hex: '#EFDFBB', rgb: [239, 223, 187] },
+  { name: 'EarthYellow', hex: '#E1A95F', rgb: [225, 169, 95] },
+  { name: 'Ebony', hex: '#555D50', rgb: [85, 93, 80] },
+  { name: 'Ecru', hex: '#C2B280', rgb: [194, 178, 128] },
+  { name: 'EerieBlack', hex: '#1B1B1B', rgb: [27, 27, 27] },
+  { name: 'Eggplant', hex: '#614051', rgb: [97, 64, 81] },
+  { name: 'Eggshell', hex: '#F0EAD6', rgb: [240, 234, 214] },
+  { name: 'EgyptianBlue', hex: '#1034A6', rgb: [16, 52, 166] },
+  { name: 'ElectricBlue', hex: '#7DF9FF', rgb: [125, 249, 255] },
+  { name: 'ElectricCrimson', hex: '#FF003F', rgb: [255, 0, 63] },
+  { name: 'ElectricCyan', hex: '#00FFFF', rgb: [0, 255, 255] },
+  { name: 'ElectricGreen', hex: '#00FF00', rgb: [0, 255, 0] },
+  { name: 'ElectricIndigo', hex: '#6F00FF', rgb: [111, 0, 255] },
+  { name: 'ElectricLavender', hex: '#F4BBFF', rgb: [244, 187, 255] },
+  { name: 'ElectricLime', hex: '#CCFF00', rgb: [204, 255, 0] },
+  { name: 'ElectricPurple', hex: '#BF00FF', rgb: [191, 0, 255] },
+  { name: 'ElectricUltramarine', hex: '#3F00FF', rgb: [63, 0, 255] },
+  { name: 'ElectricViolet', hex: '#8F00FF', rgb: [143, 0, 255] },
+  { name: 'ElectricYellow', hex: '#FFFF33', rgb: [255, 255, 51] },
+    { name: 'Emerald', hex: '#50C878', rgb: [80, 200, 120] },
+  { name: 'Eminence', hex: '#6C3082', rgb: [108, 48, 130] },
+  { name: 'EnglishGreen', hex: '#1B4D3E', rgb: [27, 77, 62] },
+  { name: 'EnglishLavender', hex: '#B48395', rgb: [180, 131, 149] },
+  { name: 'EnglishRed', hex: '#AB4B52', rgb: [171, 75, 82] },
+  { name: 'EnglishVermillion', hex: '#CC474B', rgb: [204, 71, 75] },
+  { name: 'EnglishViolet', hex: '#563C5C', rgb: [86, 60, 92] },
+  { name: 'EtonBlue', hex: '#96C8A2', rgb: [150, 200, 162] },
+  { name: 'FaluRed', hex: '#801818', rgb: [128, 24, 24] },
+  { name: 'Fandango', hex: '#B53389', rgb: [181, 51, 137] },
+  { name: 'FandangoPink', hex: '#DE5285', rgb: [222, 82, 133] },
+  { name: 'FashionFuchsia', hex: '#F400A1', rgb: [244, 0, 161] },
+  { name: 'Fawn', hex: '#E5AA70', rgb: [229, 170, 112] },
+  { name: 'Feldgrau', hex: '#4D5D53', rgb: [77, 93, 83] },
+  { name: 'FernGreen', hex: '#4F7942', rgb: [79, 121, 66] },
+  { name: 'FerrariRed', hex: '#FF2800', rgb: [255, 40, 0] },
+  { name: 'FieldDrab', hex: '#6C541E', rgb: [108, 84, 30] },
+  { name: 'FieryRose', hex: '#FF5470', rgb: [255, 84, 112] },
+  { name: 'Firebrick', hex: '#B22222', rgb: [178, 34, 34] },
+  { name: 'FireEngineRed', hex: '#CE2029', rgb: [206, 32, 41] },
+  { name: 'Flame', hex: '#E25822', rgb: [226, 88, 34] },
+  { name: 'FlamingoPink', hex: '#FC8EAC', rgb: [252, 142, 172] },
+  { name: 'Flattery', hex: '#6B4423', rgb: [107, 68, 35] },
+  { name: 'Flavescent', hex: '#F7E98E', rgb: [247, 233, 142] },
+  { name: 'Flax', hex: '#EEDC82', rgb: [238, 220, 130] },
+  { name: 'Flirt', hex: '#A2006D', rgb: [162, 0, 109] },
+  { name: 'FloralWhite', hex: '#FFFAF0', rgb: [255, 250, 240] },
+  { name: 'FluorescentOrange', hex: '#FFBF00', rgb: [255, 191, 0] },
+  { name: 'FluorescentPink', hex: '#FF1493', rgb: [255, 20, 147] },
+  { name: 'FluorescentYellow', hex: '#CCFF00', rgb: [204, 255, 0] },
+  { name: 'Folly', hex: '#FF004F', rgb: [255, 0, 79] },
+  { name: 'ForestGreen', hex: '#228B22', rgb: [34, 139, 34] },
+  { name: 'Fuchsia', hex: '#FF00FF', rgb: [255, 0, 255] },
+  { name: 'FuchsiaPink', hex: '#FF77FF', rgb: [255, 119, 255] },
+  { name: 'Fulvous', hex: '#E48400', rgb: [228, 132, 0] },
+  { name: 'FuzzyWuzzy', hex: '#87421F', rgb: [135, 66, 31] },
+  { name: 'Gainsboro', hex: '#DCDCDC', rgb: [220, 220, 220] },
+  { name: 'Gamboge', hex: '#E49B0F', rgb: [228, 155, 15] },
+  { name: 'GhostWhite', hex: '#F8F8FF', rgb: [248, 248, 255] },
+  { name: 'GiantsOrange', hex: '#FE5A1D', rgb: [254, 90, 29] },
+  { name: 'Ginger', hex: '#B06500', rgb: [176, 101, 0] },
+  { name: 'Glaucous', hex: '#6082B6', rgb: [96, 130, 182] },
+  { name: 'GlossyGrape', hex: '#AB92B3', rgb: [171, 146, 179] },
+  { name: 'Gold', hex: '#FFD700', rgb: [255, 215, 0] },
+  { name: 'GoldenBrown', hex: '#996515', rgb: [153, 101, 21] },
+  { name: 'GoldenPoppy', hex: '#FCC200', rgb: [252, 194, 0] },
+  { name: 'GoldenYellow', hex: '#FFDF00', rgb: [255, 223, 0] },
+  { name: 'Goldenrod', hex: '#DAA520', rgb: [218, 165, 32] },
+  { name: 'GrannySmithApple', hex: '#A8E4A0', rgb: [168, 228, 160] },
+  { name: 'Gray', hex: '#808080', rgb: [128, 128, 128] },
+  { name: 'GrayAsparagus', hex: '#465945', rgb: [70, 89, 69] },
+  { name: 'Green', hex: '#008000', rgb: [0, 128, 0] },
+  { name: 'GreenBlue', hex: '#1164B4', rgb: [17, 100, 180] },
+  { name: 'GreenYellow', hex: '#ADFF2F', rgb: [173, 255, 47] },
+  { name: 'Grullo', hex: '#A99A86', rgb: [169, 154, 134] },
+  { name: 'GuppieGreen', hex: '#00FF7F', rgb: [0, 255, 127] },
+    { name: 'HanBlue', hex: '#446CCF', rgb: [68, 108, 207] },
+  { name: 'HanPurple', hex: '#5218FA', rgb: [82, 24, 250] },
+  { name: 'HansaYellow', hex: '#E9D66B', rgb: [233, 214, 107] },
+  { name: 'Harlequin', hex: '#3FFF00', rgb: [63, 255, 0] },
+  { name: 'HarlequinGreen', hex: '#46CB18', rgb: [70, 203, 24] },
+  { name: 'HarvardCrimson', hex: '#C90016', rgb: [201, 0, 22] },
+  { name: 'HarvestGold', hex: '#DA9100', rgb: [218, 145, 0] },
+  { name: 'HeartGold', hex: '#808000', rgb: [128, 128, 0] },
+  { name: 'Heliotrope', hex: '#DF73FF', rgb: [223, 115, 255] },
+  { name: 'HeliotropeGray', hex: '#AA98A9', rgb: [170, 152, 169] },
+  { name: 'HollywoodCerise', hex: '#F400A1', rgb: [244, 0, 161] },
+  { name: 'Honeydew', hex: '#F0FFF0', rgb: [240, 255, 240] },
+  { name: 'HookerGreen', hex: '#49796B', rgb: [73, 121, 107] },
+  { name: 'HotMagenta', hex: '#FF1DCE', rgb: [255, 29, 206] },
+  { name: 'HotPink', hex: '#FF69B4', rgb: [255, 105, 180] },
+  { name: 'HunterGreen', hex: '#355E3B', rgb: [53, 94, 59] },
+  { name: 'Iceberg', hex: '#71A6D2', rgb: [113, 166, 210] },
+  { name: 'Icterine', hex: '#FCF75E', rgb: [252, 247, 94] },
+  { name: 'IlluminatingEmerald', hex: '#319177', rgb: [49, 145, 119] },
+  { name: 'Imperial', hex: '#602F6B', rgb: [96, 47, 107] },
+  { name: 'ImperialBlue', hex: '#002395', rgb: [0, 35, 149] },
+  { name: 'ImperialRed', hex: '#ED2939', rgb: [237, 41, 57] },
+  { name: 'Inchworm', hex: '#B2EC5D', rgb: [178, 236, 93] },
+  { name: 'Independence', hex: '#4C516D', rgb: [76, 81, 109] },
+  { name: 'IndiaGreen', hex: '#138808', rgb: [19, 136, 8] },
+  { name: 'IndianRed', hex: '#CD5C5C', rgb: [205, 92, 92] },
+  { name: 'IndianYellow', hex: '#E3A857', rgb: [227, 168, 87] },
+  { name: 'Indigo', hex: '#4B0082', rgb: [75, 0, 130] },
+  { name: 'IndigoDye', hex: '#091F92', rgb: [9, 31, 146] },
+  { name: 'IndigoWeb', hex: '#4B0082', rgb: [75, 0, 130] },
+  { name: 'InternationalKleinBlue', hex: '#002FA7', rgb: [0, 47, 167] },
+  { name: 'InternationalOrangeAerospace', hex: '#FF4F00', rgb: [255, 79, 0] },
+  { name: 'InternationalOrangeEngineering', hex: '#BA160C', rgb: [186, 22, 12] },
+  { name: 'InternationalOrangeGoldenGateBridge', hex: '#C0362C', rgb: [192, 54, 44] },
+  { name: 'Iris', hex: '#5A4FCF', rgb: [90, 79, 207] },
+  { name: 'Irresistible', hex: '#B3446C', rgb: [179, 68, 108] },
+  { name: 'Isabelline', hex: '#F4F0EC', rgb: [244, 240, 236] },
+  { name: 'ItalianSkyBlue', hex: '#B2FFFF', rgb: [178, 255, 255] },
+  { name: 'Ivory', hex: '#FFFFF0', rgb: [255, 255, 240] },
+  { name: 'Jade', hex: '#00A86B', rgb: [0, 168, 107] },
+  { name: 'Jasmine', hex: '#F8DE7E', rgb: [248, 222, 126] },
+  { name: 'JazzberryJam', hex: '#A50B5E', rgb: [165, 11, 94] },
+  { name: 'Jet', hex: '#343434', rgb: [52, 52, 52] },
+  { name: 'Jonquil', hex: '#F4CA16', rgb: [244, 202, 22] },
+  { name: 'JordyBlue', hex: '#8AB9F1', rgb: [138, 185, 241] },
+  { name: 'JuneBud', hex: '#BDDA57', rgb: [189, 218, 87] },
+  { name: 'JungleGreen', hex: '#29AB87', rgb: [41, 171, 135] },
+  { name: 'KellyGreen', hex: '#4CBB17', rgb: [76, 187, 23] },
+  { name: 'KenyanCopper', hex: '#7C1C05', rgb: [124, 28, 5] },
+  { name: 'Khaki', hex: '#C3B091', rgb: [195, 176, 145] },
+  { name: 'KhakiWeb', hex: '#F0E68C', rgb: [240, 230, 140] },
+  { name: 'KiwiGreen', hex: '#8EE53F', rgb: [142, 229, 63] },
+  { name: 'Kobe', hex: '#882D17', rgb: [136, 45, 23] },
+  { name: 'Kobi', hex: '#E79FC4', rgb: [231, 159, 196] },
+  { name: 'KombuGreen', hex: '#354230', rgb: [53, 66, 48] },
+  { name: 'LaSalleGreen', hex: '#087830', rgb: [8, 120, 48] },
+  { name: 'LanguidLavender', hex: '#D6CADD', rgb: [214, 202, 221] },
+  { name: 'LapisLazuli', hex: '#26619C', rgb: [38, 97, 156] },
+  { name: 'LaserLemon', hex: '#FFFF66', rgb: [255, 255, 102] },
+  { name: 'LaurelGreen', hex: '#A9BA9D', rgb: [169, 186, 157] },
+  { name: 'Lava', hex: '#CF1020', rgb: [207, 16, 32] },
+  { name: 'Lavender', hex: '#E6E6FA', rgb: [230, 230, 250] },
+  { name: 'LavenderBlue', hex: '#CCCCFF', rgb: [204, 204, 255] },
+  { name: 'LavenderBlush', hex: '#FFF0F5', rgb: [255, 240, 245] },
+  { name: 'LavenderGray', hex: '#C4C3D0', rgb: [196, 195, 208] },
+  { name: 'LavenderIndigo', hex: '#9457EB', rgb: [148, 87, 235] },
+  { name: 'LavenderMagenta', hex: '#EE82EE', rgb: [238, 130, 238] },
+  { name: 'LavenderMist', hex: '#E6E6FA', rgb: [230, 230, 250] },
+  { name: 'LavenderPink', hex: '#FBAED2', rgb: [251, 174, 210] },
+  { name: 'LavenderPurple', hex: '#967BB6', rgb: [150, 123, 182] },
+  { name: 'LavenderRose', hex: '#FBA0E3', rgb: [251, 160, 227] },
+  { name: 'LawnGreen', hex: '#7CFC00', rgb: [124, 252, 0] },
+  { name: 'Lemon', hex: '#FFF700', rgb: [255, 247, 0] },
+  { name: 'LemonChiffon', hex: '#FFFACD', rgb: [255, 250, 205] },
+  { name: 'LemonCurry', hex: '#CCA01D', rgb: [204, 160, 29] },
+  { name: 'LemonGlacier', hex: '#FDFF00', rgb: [253, 255, 0] },
+  { name: 'LemonLime', hex: '#E3FF00', rgb: [227, 255, 0] },
+  { name: 'Licorice', hex: '#1A1110', rgb: [26, 17, 16] },
+  { name: 'LightApricot', hex: '#FDD5B1', rgb: [253, 213, 177] },
+  { name: 'LightBlue', hex: '#ADD8E6', rgb: [173, 216, 230] },
+  { name: 'LightBrown', hex: '#B5651D', rgb: [181, 101, 29] },
+  { name: 'LightCarminePink', hex: '#E66771', rgb: [230, 103, 113] },
+  { name: 'LightCoral', hex: '#F08080', rgb: [240, 128, 128] },
+  { name: 'LightCornflowerBlue', hex: '#93CCEA', rgb: [147, 204, 234] },
+  { name: 'LightCrimson', hex: '#F56991', rgb: [245, 105, 145] },
+  { name: 'LightCyan', hex: '#E0FFFF', rgb: [224, 255, 255] },
+  { name: 'LightDeepPink', hex: '#FF5CCD', rgb: [255, 92, 205] },
+  { name: 'LightFuchsiaPink', hex: '#F984EF', rgb: [249, 132, 239] },
+  { name: 'LightGoldenrodYellow', hex: '#FAFAD2', rgb: [250, 250, 210] },
+  { name: 'LightGray', hex: '#D3D3D3', rgb: [211, 211, 211] },
+  { name: 'LightGreen', hex: '#90EE90', rgb: [144, 238, 144] },
+  { name: 'LightKhaki', hex: '#F0E68C', rgb: [240, 230, 140] },
+  { name: 'LightMediumOrchid', hex: '#D39BCB', rgb: [211, 155, 203] },
+  { name: 'LightMossGreen', hex: '#ADDFAD', rgb: [173, 223, 173] },
+  { name: 'LightOrchid', hex: '#E6A8D7', rgb: [230, 168, 215] },
+  { name: 'LightPastelPurple', hex: '#B19CD9', rgb: [177, 156, 217] },
+  { name: 'LightPink', hex: '#FFB6C1', rgb: [255, 182, 193] },
+  { name: 'LightRedOchre', hex: '#E97451', rgb: [233, 116, 81] },
+  { name: 'LightSalmon', hex: '#FFA07A', rgb: [255, 160, 122] },
+  { name: 'LightSalmonPink', hex: '#FF9999', rgb: [255, 153, 153] },
+  { name: 'LightSeaGreen', hex: '#20B2AA', rgb: [32, 178, 170] },
+  { name: 'LightSkyBlue', hex: '#87CEFA', rgb: [135, 206, 250] },
+  { name: 'LightSlateGray', hex: '#778899', rgb: [119, 136, 153] },
+  { name: 'LightSteelBlue', hex: '#B0C4DE', rgb: [176, 196, 222] },
+  { name: 'LightTaupe', hex: '#B38B6D', rgb: [179, 139, 109] },
+  { name: 'LightThulianPink', hex: '#E68FAC', rgb: [230, 143, 172] },
+  { name: 'LightYellow', hex: '#FFFFE0', rgb: [255, 255, 224] },
+  { name: 'Lilac', hex: '#C8A2C8', rgb: [200, 162, 200] },
+  { name: 'LilacLuster', hex: '#AE98AA', rgb: [174, 152, 170] },
+  { name: 'Lime', hex: '#00FF00', rgb: [0, 255, 0] },
+  { name: 'LimeGreen', hex: '#32CD32', rgb: [50, 205, 50] },
+  { name: 'LincolnGreen', hex: '#195905', rgb: [25, 89, 5] },
+  { name: 'Linen', hex: '#FAF0E6', rgb: [250, 240, 230] },
+  { name: 'Lion', hex: '#C19A6B', rgb: [193, 154, 107] },
+  { name: 'LiseranPurple', hex: '#DE6FA1', rgb: [222, 111, 161] },
+  { name: 'LittleBoyBlue', hex: '#6CA0DC', rgb: [108, 160, 220] },
+  { name: 'Liver', hex: '#534B4F', rgb: [83, 75, 79] },
+  { name: 'Lust', hex: '#E62020', rgb: [230, 32, 32] },
+  { name: 'MacaroniAndCheese', hex: '#FFBD88', rgb: [255, 189, 136] },
+  { name: 'Magenta', hex: '#FF00FF', rgb: [255, 0, 255] },
+  { name: 'MagentaCrayola', hex: '#FF55A3', rgb: [255, 85, 163] },
+  { name: 'MagentaDye', hex: '#CA1F7B', rgb: [202, 31, 123] },
+  { name: 'MagentaPantone', hex: '#D0417E', rgb: [208, 65, 126] },
+  { name: 'MagentaProcess', hex: '#FF0090', rgb: [255, 0, 144] },
+  { name: 'MagentaHaze', hex: '#9F4576', rgb: [159, 69, 118] },
+  { name: 'MagicMint', hex: '#AAF0D1', rgb: [170, 240, 209] },
+  { name: 'Mahogany', hex: '#C04000', rgb: [192, 64, 0] },
+  { name: 'Maize', hex: '#FBEC5D', rgb: [251, 236, 93] },
+  { name: 'MajorelleBlue', hex: '#6050DC', rgb: [96, 80, 220] },
+  { name: 'Malachite', hex: '#0BDA51', rgb: [11, 218, 81] },
+  { name: 'Manatee', hex: '#979AAA', rgb: [151, 154, 170] },
+  { name: 'MangoTango', hex: '#FF8243', rgb: [255, 130, 67] },
+  { name: 'Mantle', hex: '#8EBDC7', rgb: [142, 189, 199] },
+  { name: 'Maroon', hex: '#800000', rgb: [128, 0, 0] },
+  { name: 'Mauve', hex: '#E0B0FF', rgb: [224, 176, 255] },
+  { name: 'MauveTaupe', hex: '#915F6D', rgb: [145, 95, 109] },
+  { name: 'Mauvelous', hex: '#EF98AA', rgb: [239, 152, 170] },
+  { name: 'MayGreen', hex: '#4C9141', rgb: [76, 145, 65] },
+  { name: 'MeatBrown', hex: '#E5B73B', rgb: [229, 183, 59] },
+  { name: 'MediumAquamarine', hex: '#66CDAA', rgb: [102, 205, 170] },
+  { name: 'MediumBlue', hex: '#0000CD', rgb: [0, 0, 205] },
+  { name: 'MediumCandyAppleRed', hex: '#E2062C', rgb: [226, 6, 44] },
+  { name: 'MediumCarmine', hex: '#AF4035', rgb: [175, 64, 53] },
+  { name: 'MediumChampagne', hex: '#F3E5AB', rgb: [243, 229, 171] },
+  { name: 'MediumElectricBlue', hex: '#035096', rgb: [3, 80, 150] },
+  { name: 'MediumJungleGreen', hex: '#1C352D', rgb: [28, 53, 45] },
+  { name: 'MediumLavenderMagenta', hex: '#DD00FF', rgb: [221, 0, 255] },
+  { name: 'MediumOrchid', hex: '#BA55D3', rgb: [186, 85, 211] },
+  { name: 'MediumPurple', hex: '#9370DB', rgb: [147, 112, 219] },
+  { name: 'MediumRedViolet', hex: '#BB3385', rgb: [187, 51, 133] },
+  { name: 'MediumRuby', hex: '#AA4069', rgb: [170, 64, 105] },
+  { name: 'MediumSeaGreen', hex: '#3CB371', rgb: [60, 179, 113] },
+  { name: 'MediumSkyBlue', hex: '#80DAEB', rgb: [128, 218, 235] },
+  { name: 'MediumSlateBlue', hex: '#7B68EE', rgb: [123, 104, 238] },
+  { name: 'MediumSpringBud', hex: '#C9DC87', rgb: [201, 220, 135] },
+  { name: 'MediumSpringGreen', hex: '#00FA9A', rgb: [0, 250, 154] },
+  { name: 'MediumTaupe', hex: '#674C47', rgb: [103, 76, 71] },
+  { name: 'MediumTurquoise', hex: '#48D1CC', rgb: [72, 209, 204] },
+  { name: 'MediumVermilion', hex: '#D9603B', rgb: [217, 96, 59] },
+  { name: 'MediumVioletRed', hex: '#C71585', rgb: [199, 21, 133] },
+  { name: 'MellowApricot', hex: '#F8B878', rgb: [248, 184, 120] },
+  { name: 'MellowYellow', hex: '#F8DE7E', rgb: [248, 222, 126] },
+  { name: 'Melon', hex: '#FDBCB4', rgb: [253, 188, 180] },
+  { name: 'MetallicSeaweed', hex: '#0A7E8C', rgb: [10, 126, 140] },
+  { name: 'MetallicSunburst', hex: '#9C7C38', rgb: [156, 124, 56] },
+  { name: 'MexicanPink', hex: '#E4007C', rgb: [228, 0, 124] },
+  { name: 'MidnightBlue', hex: '#191970', rgb: [25, 25, 112] },
+  { name: 'MidnightGreenEagleGreen', hex: '#004953', rgb: [0, 73, 83] },
+  { name: 'MikadoYellow', hex: '#FFC40C', rgb: [255, 196, 12] },
+  { name: 'Mint', hex: '#3EB489', rgb: [62, 180, 137] },
+  { name: 'MintCream', hex: '#F5FFFA', rgb: [245, 255, 250] },
+  { name: 'MintGreen', hex: '#98FF98', rgb: [152, 255, 152] },
+  { name: 'MistyRose', hex: '#FFE4E1', rgb: [255, 228, 225] },
+  { name: 'Moccasin', hex: '#FFE4B5', rgb: [255, 228, 181] },
+  { name: 'ModeBeige', hex: '#967117', rgb: [150, 113, 23] },
+  { name: 'MoonstoneBlue', hex: '#73A9C2', rgb: [115, 169, 194] },
+  { name: 'MordantRed19', hex: '#AE0C00', rgb: [174, 12, 0] },
+  { name: 'MorningBlue', hex: '#8DA399', rgb: [141, 163, 153] },
+  { name: 'MossGreen', hex: '#8A9A5B', rgb: [138, 154, 91] },
+  { name: 'MountainMeadow', hex: '#30BA8F', rgb: [48, 186, 143] },
+  { name: 'MountbattenPink', hex: '#997A8D', rgb: [153, 122, 141] },
+  { name: 'MSUPurple', hex: '#450084', rgb: [69, 0, 132] },
+  { name: 'Mulberry', hex: '#C54B8C', rgb: [197, 75, 140] },
+  { name: 'Mustard', hex: '#FFDB58', rgb: [255, 219, 88] },
+  { name: 'MyPink', hex: '#D7837F', rgb: [215, 131, 127] },
+  { name: 'NadeshikoPink', hex: '#F6ADC6', rgb: [246, 173, 198] },
+  { name: 'NaplesYellow', hex: '#FADA5E', rgb: [250, 218, 94] },
+  { name: 'Navy', hex: '#000080', rgb: [0, 0, 128] },
+  { name: 'NavyPurple', hex: '#9457EB', rgb: [148, 87, 235] },
+  { name: 'NeonCarrot', hex: '#FFA343', rgb: [255, 163, 67] },
+  { name: 'NeonFuchsia', hex: '#FE4164', rgb: [254, 65, 100] },
+  { name: 'NeonGreen', hex: '#39FF14', rgb: [57, 255, 20] },
+  { name: 'NonPhotoBlue', hex: '#A4DDED', rgb: [164, 221, 237] },
+  { name: 'NorthTexasGreen', hex: '#059033', rgb: [5, 144, 51] },
+  { name: 'Nyanza', hex: '#E9FFDB', rgb: [233, 255, 219] },
+  { name: 'OceanBlue', hex: '#4F42B5', rgb: [79, 66, 181] },
+  { name: 'OceanGreen', hex: '#48BF91', rgb: [72, 191, 145] },
+  { name: 'Ochre', hex: '#CC7722', rgb: [204, 119, 34] },
+  { name: 'OldBurgundy', hex: '#43302E', rgb: [67, 48, 46] },
+  { name: 'OldGold', hex: '#CFB53B', rgb: [207, 181, 59] },
+  { name: 'OldLace', hex: '#FDF5E6', rgb: [253, 245, 230] },
+  { name: 'OldLavender', hex: '#796878', rgb: [121, 104, 120] },
+  { name: 'Olive', hex: '#808000', rgb: [128, 128, 0] },
+  { name: 'OliveDrab', hex: '#6B8E23', rgb: [107, 142, 35] },
+  { name: 'OliveGreen', hex: '#B5B35C', rgb: [181, 179, 92] },
+  { name: 'Onyx', hex: '#353839', rgb: [53, 56, 57] },
+  { name: 'OperaMauve', hex: '#B784A7', rgb: [183, 132, 167] },
+  { name: 'Orange', hex: '#FFA500', rgb: [255, 165, 0] },
+  { name: 'OrangeRed', hex: '#FF4500', rgb: [255, 69, 0] },
+  { name: 'OrangeYellow', hex: '#F5BD1F', rgb: [245, 189, 31] },
+  { name: 'Orchid', hex: '#DA70D6', rgb: [218, 112, 214] },
+  { name: 'OuterSpace', hex: '#414A4C', rgb: [65, 74, 76] },
+  { name: 'OutrageousOrange', hex: '#FF6E4A', rgb: [255, 110, 74] },
+  { name: 'OxfordBlue', hex: '#002147', rgb: [0, 33, 71] },
+  { name: 'PakistanGreen', hex: '#006600', rgb: [0, 102, 0] },
+  { name: 'PalatinateBlue', hex: '#273BE2', rgb: [39, 59, 226] },
+  { name: 'PalatinatePurple', hex: '#682860', rgb: [104, 40, 96] },
+  { name: 'PaleAqua', hex: '#BCD4E6', rgb: [188, 212, 230] },
+  { name: 'PaleBlue', hex: '#AFEEEE', rgb: [175, 238, 238] },
+  { name: 'PaleBrown', hex: '#987654', rgb: [152, 118, 84] },
+  { name: 'PaleCarmine', hex: '#AF4035', rgb: [175, 64, 53] },
+  { name: 'PaleCerulean', hex: '#9BC4E2', rgb: [155, 196, 226] },
+  { name: 'PaleChestnut', hex: '#DDADAF', rgb: [221, 173, 175] },
+  { name: 'PaleCopper', hex: '#DA8A67', rgb: [218, 138, 103] },
+  { name: 'PaleCornflowerBlue', hex: '#ABCDEF', rgb: [171, 205, 239] },
+  { name: 'PaleCyan', hex: '#87D3F8', rgb: [135, 211, 248] },
+  { name: 'PaleGoldenrod', hex: '#EEE8AA', rgb: [238, 232, 170] },
+  { name: 'PaleGreen', hex: '#98FB98', rgb: [152, 251, 152] },
+  { name: 'PaleLavender', hex: '#DCD0FF', rgb: [220, 208, 255] },
+  { name: 'PaleMagenta', hex: '#F984E5', rgb: [249, 132, 229] },
+  { name: 'PalePink', hex: '#FADADD', rgb: [250, 218, 221] },
+  { name: 'PaleRedViolet', hex: '#DB7093', rgb: [219, 112, 147] },
+  { name: 'PaleRobinEggBlue', hex: '#96DED1', rgb: [150, 222, 209] },
+  { name: 'PaleSilver', hex: '#C9C0BB', rgb: [201, 192, 187] },
+  { name: 'PaleSpringBud', hex: '#ECEBBD', rgb: [236, 235, 189] },
+  { name: 'PaleTaupe', hex: '#BC987E', rgb: [188, 152, 126] },
+  { name: 'PaleTurquoise', hex: '#AFEEEE', rgb: [175, 238, 238] },
+  { name: 'PaleVioletRed', hex: '#DB7093', rgb: [219, 112, 147] },
+  { name: 'PapayaWhip', hex: '#FFEFD5', rgb: [255, 239, 213] },
+  { name: 'Parakeet', hex: '#A7F432', rgb: [167, 244, 50] },
+  { name: 'ParisGreen', hex: '#50C878', rgb: [80, 200, 120] },
+  { name: 'PastelBlue', hex: '#AEC6CF', rgb: [174, 198, 207] },
+  { name: 'PastelBrown', hex: '#836953', rgb: [131, 105, 83] },
+  { name: 'PastelGray', hex: '#CFCFC4', rgb: [207, 207, 196] },
+  { name: 'PastelGreen', hex: '#77DD77', rgb: [119, 221, 119] },
+  { name: 'PastelMagenta', hex: '#F49AC2', rgb: [244, 154, 194] },
+  { name: 'PastelOrange', hex: '#FFB347', rgb: [255, 179, 71] },
+  { name: 'PastelPink', hex: '#DEA5A4', rgb: [222, 165, 164] },
+  { name: 'PastelPurple', hex: '#B39EB5', rgb: [179, 158, 181] },
+  { name: 'PastelRed', hex: '#FF6961', rgb: [255, 105, 97] },
+  { name: 'PastelViolet', hex: '#CB99C9', rgb: [203, 153, 201] },
+  { name: 'PastelYellow', hex: '#FDFD96', rgb: [253, 253, 150] },
+  { name: 'PayneGray', hex: '#536878', rgb: [83, 104, 120] },
+  { name: 'Peach', hex: '#FFE5B4', rgb: [255, 229, 180] },
+  { name: 'PeachCrayola', hex: '#FFCBA4', rgb: [255, 203, 164] },
+  { name: 'PeachOrange', hex: '#FFCC99', rgb: [255, 204, 153] },
+  { name: 'PeachPuff', hex: '#FFDAB9', rgb: [255, 218, 185] },
+  { name: 'PeachYellow', hex: '#FADFAD', rgb: [250, 223, 173] },
+  { name: 'Pear', hex: '#D1E231', rgb: [209, 226, 49] },
+  { name: 'Pearl', hex: '#EAE0C8', rgb: [234, 224, 200] },
+  { name: 'PearlAqua', hex: '#88D8C0', rgb: [136, 216, 192] },
+  { name: 'Peridot', hex: '#E6E200', rgb: [230, 226, 0] },
+  { name: 'Periwinkle', hex: '#CCCCFF', rgb: [204, 204, 255] },
+  { name: 'PersianBlue', hex: '#1C39BB', rgb: [28, 57, 187] },
+  { name: 'PersianGreen', hex: '#00A693', rgb: [0, 166, 147] },
+  { name: 'PersianIndigo', hex: '#32127A', rgb: [50, 18, 122] },
+  { name: 'PersianOrange', hex: '#D99058', rgb: [217, 144, 88] },
+  { name: 'PersianPink', hex: '#F77FBE', rgb: [247, 127, 190] },
+  { name: 'PersianPlum', hex: '#701C1C', rgb: [112, 28, 28] },
+  { name: 'PersianRed', hex: '#CC3333', rgb: [204, 51, 51] },
+  { name: 'PersianRose', hex: '#FE28A2', rgb: [254, 40, 162] },
+  { name: 'Phlox', hex: '#DF00FF', rgb: [223, 0, 255] },
+  { name: 'PhthaloBlue', hex: '#000F89', rgb: [0, 15, 137] },
+  { name: 'PhthaloGreen', hex: '#123524', rgb: [18, 53, 36] },
+  { name: 'PictonBlue', hex: '#45B1E8', rgb: [69, 177, 232] },
+  { name: 'PictorialCarmine', hex: '#C30B4E', rgb: [195, 11, 78] },
+  { name: 'PineGreen', hex: '#01796F', rgb: [1, 121, 111] },
+  { name: 'Pink', hex: '#FFC0CB', rgb: [255, 192, 203] },
+  { name: 'PinkFlamingo', hex: '#FC74FD', rgb: [252, 116, 253] },
+  { name: 'PinkLace', hex: '#FFDDF4', rgb: [255, 221, 244] },
+  { name: 'PinkLavender', hex: '#D8B2D1', rgb: [216, 178, 209] },
+  { name: 'PinkPearl', hex: '#E7ACCF', rgb: [231, 172, 207] },
+  { name: 'PinkSherbet', hex: '#F78FA7', rgb: [247, 143, 167] },
+  { name: 'Pistachio', hex: '#93C572', rgb: [147, 197, 114] },
+  { name: 'Plum', hex: '#8E4585', rgb: [142, 69, 133] },
+  { name: 'PortlandOrange', hex: '#FF5A36', rgb: [255, 90, 54] },
+  { name: 'PowderBlue', hex: '#B0E0E6', rgb: [176, 224, 230] },
+  { name: 'PrincetonOrange', hex: '#FF8F00', rgb: [255, 143, 0] },
+  { name: 'ProcessCyan', hex: '#00B7EB', rgb: [0, 183, 235] },
+  { name: 'Prune', hex: '#701C1C', rgb: [112, 28, 28] },
+  { name: 'PrussianBlue', hex: '#003153', rgb: [0, 49, 83] },
+  { name: 'PsychedelicPurple', hex: '#DF00FF', rgb: [223, 0, 255] },
+  { name: 'Puce', hex: '#CC8899', rgb: [204, 136, 153] },
+  { name: 'Pumpkin', hex: '#FF7518', rgb: [255, 117, 24] },
+  { name: 'Purple', hex: '#800080', rgb: [128, 0, 128] },
+  { name: 'PurpleHeart', hex: '#69359C', rgb: [105, 53, 156] },
+  { name: 'PurpleMountainMajesty', hex: '#9678B6', rgb: [150, 120, 182] },
+  { name: 'PurpleTaupe', hex: '#50404D', rgb: [80, 64, 77] },
+  { name: 'PurpleX11', hex: '#A020F0', rgb: [160, 32, 240] },
+  { name: 'Quartz', hex: '#51484F', rgb: [81, 72, 79] },
+  { name: 'Rackley', hex: '#5D8AA8', rgb: [93, 138, 168] },
+  { name: 'RadicalRed', hex: '#FF355E', rgb: [255, 53, 94] },
+  { name: 'Raspberry', hex: '#E30B5C', rgb: [227, 11, 92] },
+  { name: 'RaspberryGlace', hex: '#915F6D', rgb: [145, 95, 109] },
+  { name: 'RaspberryPink', hex: '#E25098', rgb: [226, 80, 152] },
+  { name: 'RaspberryRose', hex: '#B3446C', rgb: [179, 68, 108] },
+  { name: 'RawSienna', hex: '#D68A59', rgb: [214, 138, 89] },
+  { name: 'RawUmber', hex: '#826644', rgb: [130, 102, 68] },
+  { name: 'RazzleDazzleRose', hex: '#FF33CC', rgb: [255, 51, 204] },
+  { name: 'Razzmatazz', hex: '#E3256B', rgb: [227, 37, 107] },
+  { name: 'Red', hex: '#FF0000', rgb: [255, 0, 0] },
+  { name: 'RedCrayola', hex: '#EE204D', rgb: [238, 32, 77] },
+  { name: 'RedMunsell', hex: '#F2003C', rgb: [242, 0, 60] },
+  { name: 'RedNCS', hex: '#C40233', rgb: [196, 2, 51] },
+  { name: 'RedPantone', hex: '#ED2939', rgb: [237, 41, 57] },
+  { name: 'RedPigment', hex: '#ED1C24', rgb: [237, 28, 36] },
+  { name: 'RedRYB', hex: '#FE2712', rgb: [254, 39, 18] },
+  { name: 'RedOrange', hex: '#FF5349', rgb: [255, 83, 73] },
+  { name: 'RedViolet', hex: '#C71585', rgb: [199, 21, 133] },
+  { name: 'RichBlack', hex: '#004040', rgb: [0, 64, 64] },
+  { name: 'RichBrilliantLavender', hex: '#F1A7FE', rgb: [241, 167, 254] },
+  { name: 'RichCarmine', hex: '#D70040', rgb: [215, 0, 64] },
+  { name: 'RichElectricBlue', hex: '#0892D0', rgb: [8, 146, 208] },
+  { name: 'RichLavender', hex: '#A76BCF', rgb: [167, 107, 207] },
+  { name: 'RichLilac', hex: '#B666D2', rgb: [182, 102, 210] },
+  { name: 'RichMaroon', hex: '#B03060', rgb: [176, 48, 96] },
+  { name: 'RifleGreen', hex: '#414833', rgb: [65, 72, 51] },
+  { name: 'RobinEggBlue', hex: '#00CCCC', rgb: [0, 204, 204] },
+  { name: 'RoyalAzure', hex: '#0038A8', rgb: [0, 56, 168] },
+  { name: 'RoyalBlue', hex: '#4169E1', rgb: [65, 105, 225] },
+  { name: 'RoyalFuchsia', hex: '#CA2C92', rgb: [202, 44, 146] },
+  { name: 'RoyalPurple', hex: '#7851A9', rgb: [120, 81, 169] },
+  { name: 'Ruby', hex: '#E0115F', rgb: [224, 17, 95] },
+  { name: 'Ruddy', hex: '#FF0028', rgb: [255, 0, 40] },
+  { name: 'RuddyBrown', hex: '#BB6528', rgb: [187, 101, 40] },
+  { name: 'RuddyPink', hex: '#E18E96', rgb: [225, 142, 150] },
+  { name: 'Rufous', hex: '#A81C07', rgb: [168, 28, 7] },
+  { name: 'Russet', hex: '#80461B', rgb: [128, 70, 27] },
+  { name: 'Rust', hex: '#B7410E', rgb: [183, 65, 14] },
+  { name: 'SacramentoStateGreen', hex: '#00563F', rgb: [0, 86, 63] },
+  { name: 'SaddleBrown', hex: '#8B4513', rgb: [139, 69, 19] },
+  { name: 'SafetyOrange', hex: '#FF7800', rgb: [255, 120, 0] },
+  { name: 'SafetyOrangeBlazeOrange', hex: '#FF6700', rgb: [255, 103, 0] },
+  { name: 'SafetyYellow', hex: '#EED202', rgb: [238, 210, 2] },
+  { name: 'Saffron', hex: '#F4C430', rgb: [244, 196, 48] },
+  { name: 'Sage', hex: '#BCB88A', rgb: [188, 184, 138] },
+  { name: 'StPatricksBlue', hex: '#23297A', rgb: [35, 41, 122] },
+  { name: 'Salmon', hex: '#FA8072', rgb: [250, 128, 114] },
+  { name: 'Sand', hex: '#C2B280', rgb: [194, 178, 128] },
+  { name: 'SandDune', hex: '#967117', rgb: [150, 113, 23] },
+  { name: 'Sandstorm', hex: '#ECD540', rgb: [236, 213, 64] },
+  { name: 'SandyBrown', hex: '#F4A460', rgb: [244, 164, 96] },
+  { name: 'SandyTaupe', hex: '#967117', rgb: [150, 113, 23] },
+  { name: 'Sangria', hex: '#92000A', rgb: [146, 0, 10] },
+  { name: 'SapGreen', hex: '#507D2A', rgb: [80, 125, 42] },
+  { name: 'Sapphire', hex: '#0F52BA', rgb: [15, 82, 186] },
+  { name: 'SatinSheenGold', hex: '#CBA135', rgb: [203, 161, 53] },
+  { name: 'Scarlet', hex: '#FF2400', rgb: [255, 36, 0] },
+  { name: 'SchaussPink', hex: '#FF91AF', rgb: [255, 145, 175] },
+  { name: 'SchoolBusYellow', hex: '#FFD800', rgb: [255, 216, 0] },
+  { name: 'ScreaminGreen', hex: '#76FF7A', rgb: [118, 255, 122] },
+  { name: 'SeaGreen', hex: '#2E8B57', rgb: [46, 139, 87] },
+  { name: 'SealBrown', hex: '#59260B', rgb: [89, 38, 11] },
+  { name: 'Seashell', hex: '#FFF5EE', rgb: [255, 245, 238] },
+  { name: 'SelectiveYellow', hex: '#FFBA00', rgb: [255, 186, 0] },
+  { name: 'Sepia', hex: '#704214', rgb: [112, 66, 20] },
+  { name: 'Shadow', hex: '#8A795D', rgb: [138, 121, 93] },
+  { name: 'ShamrockGreen', hex: '#009E60', rgb: [0, 158, 96] },
+  { name: 'ShockingPink', hex: '#FC0FC0', rgb: [252, 15, 192] },
+  { name: 'Sienna', hex: '#882D17', rgb: [136, 45, 23] },
+  { name: 'Silver', hex: '#C0C0C0', rgb: [192, 192, 192] },
+  { name: 'Sinopia', hex: '#CB410B', rgb: [203, 65, 11] },
+  { name: 'Skobeloff', hex: '#007474', rgb: [0, 116, 116] },
+  { name: 'SkyBlue', hex: '#87CEEB', rgb: [135, 206, 235] },
+  { name: 'SkyMagenta', hex: '#CF71AF', rgb: [207, 113, 175] },
+  { name: 'SlateBlue', hex: '#6A5ACD', rgb: [106, 90, 205] },
+  { name: 'SlateGray', hex: '#708090', rgb: [112, 128, 144] },
+  { name: 'Smalt', hex: '#003399', rgb: [0, 51, 153] },
+  { name: 'SmokyBlack', hex: '#100C08', rgb: [16, 12, 8] },
+  { name: 'Snow', hex: '#FFFAFA', rgb: [255, 250, 250] },
+  { name: 'SpiroDiscoBall', hex: '#0FC0FC', rgb: [15, 192, 252] },
+  { name: 'SpringBud', hex: '#A7FC00', rgb: [167, 252, 0] },
+  { name: 'SpringGreen', hex: '#00FF7F', rgb: [0, 255, 127] },
+  { name: 'SteelBlue', hex: '#4682B4', rgb: [70, 130, 180] },
+  { name: 'StilDeGrainYellow', hex: '#FADA5E', rgb: [250, 218, 94] },
+  { name: 'Straw', hex: '#E4D96F', rgb: [228, 217, 111] },
+  { name: 'Sunglow', hex: '#FFCC33', rgb: [255, 204, 51] },
+  { name: 'Sunset', hex: '#FAD6A5', rgb: [250, 214, 165] },
+  { name: 'Tan', hex: '#D2B48C', rgb: [210, 180, 140] },
+  { name: 'Tangerine', hex: '#F28500', rgb: [242, 133, 0] },
+  { name: 'TangoPink', hex: '#E4717A', rgb: [228, 113, 122] },
+  { name: 'Taupe', hex: '#483C32', rgb: [72, 60, 50] },
+  { name: 'TaupeGray', hex: '#8B8589', rgb: [139, 133, 137] },
+  { name: 'TeaGreen', hex: '#D0F0C0', rgb: [208, 240, 192] },
+  { name: 'Teal', hex: '#008080', rgb: [0, 128, 128] },
+  { name: 'TealBlue', hex: '#367588', rgb: [54, 117, 136] },
+  { name: 'Telemagenta', hex: '#CF3476', rgb: [207, 52, 118] },
+  { name: 'Tenné', hex: '#CD5700', rgb: [205, 87, 0] },
+  { name: 'TerraCotta', hex: '#E2725B', rgb: [226, 114, 91] },
+  { name: 'Thistle', hex: '#D8BFD8', rgb: [216, 191, 216] },
+  { name: 'ThulianPink', hex: '#DE6FA1', rgb: [222, 111, 161] },
+  { name: 'TickleMePink', hex: '#FC89AC', rgb: [252, 137, 172] },
+  { name: 'TiffanyBlue', hex: '#0ABAB5', rgb: [10, 186, 181] },
+  { name: 'TigerEye', hex: '#E08D3C', rgb: [224, 141, 60] },
+  { name: 'Timberwolf', hex: '#DBD7D2', rgb: [219, 215, 210] },
+  { name: 'TitaniumYellow', hex: '#EEE600', rgb: [238, 230, 0] },
+  { name: 'Tomato', hex: '#FF6347', rgb: [255, 99, 71] },
+  { name: 'Toolbox', hex: '#746CC0', rgb: [116, 108, 192] },
+  { name: 'Topaz', hex: '#FFC87C', rgb: [255, 200, 124] },
+  { name: 'TractorRed', hex: '#FD0E35', rgb: [253, 14, 53] },
+  { name: 'TrolleyGrey', hex: '#808080', rgb: [128, 128, 128] },
+  { name: 'TropicalRainForest', hex: '#00755E', rgb: [0, 117, 94] },
+  { name: 'TrueBlue', hex: '#0073CF', rgb: [0, 115, 207] },
+  { name: 'TuftsBlue', hex: '#417DC1', rgb: [65, 125, 193] },
+  { name: 'Tulip', hex: '#FF878D', rgb: [255, 135, 141] },
+  { name: 'Tumbleweed', hex: '#DEAA88', rgb: [222, 170, 136] },
+  { name: 'Turquoise', hex: '#40E0D0', rgb: [64, 224, 208] },
+  { name: 'TurquoiseBlue', hex: '#00FFEF', rgb: [0, 255, 239] },
+  { name: 'TurquoiseGreen', hex: '#A0D6B4', rgb: [160, 214, 180] },
+  { name: 'Tuscan', hex: '#FAD6A5', rgb: [250, 214, 165] },
+  { name: 'TuscanRed', hex: '#7C4848', rgb: [124, 72, 72] },
+  { name: 'Tuscany', hex: '#C09999', rgb: [192, 153, 153] },
+  { name: 'TwilightLavender', hex: '#8A496B', rgb: [138, 73, 107] },
+  { name: 'TyrianPurple', hex: '#66023C', rgb: [102, 2, 60] },
+  { name: 'UAblue', hex: '#0033AA', rgb: [0, 51, 170] },
+  { name: 'UAred', hex: '#D9004C', rgb: [217, 0, 76] },
+  { name: 'Ube', hex: '#8878C3', rgb: [136, 120, 195] },
+  { name: 'UCLAblue', hex: '#536895', rgb: [83, 104, 149] },
+  { name: 'UCLAgold', hex: '#FFB300', rgb: [255, 179, 0] },
+  { name: 'UdderPink', hex: '#FFCCCC', rgb: [255, 204, 204] },
+  { name: 'UltraPink', hex: '#FF6FFF', rgb: [255, 111, 255] },
+  { name: 'Ultramarine', hex: '#3F00FF', rgb: [63, 0, 255] },
+  { name: 'UltramarineBlue', hex: '#4166F5', rgb: [65, 102, 245] },
+  { name: 'Umber', hex: '#635147', rgb: [99, 81, 71] },
+  { name: 'UnitedNationsBlue', hex: '#5B92E5', rgb: [91, 146, 229] },
+  { name: 'UniversityOfCaliforniaGold', hex: '#B78727', rgb: [183, 135, 39] },
+  { name: 'UnmellowYellow', hex: '#FFFF66', rgb: [255, 255, 102] },
+  { name: 'UPForestGreen', hex: '#014421', rgb: [1, 68, 33] },
+  { name: 'UPMaroon', hex: '#7B1113', rgb: [123, 17, 19] },
+  { name: 'UpsdellRed', hex: '#AE2029', rgb: [174, 32, 41] },
+  { name: 'Urobilin', hex: '#E1AD21', rgb: [225, 173, 33] },
+  { name: 'USAFABlue', hex: '#004F98', rgb: [0, 79, 152] },
+  { name: 'USCCardinal', hex: '#990000', rgb: [153, 0, 0] },
+  { name: 'USCGold', hex: '#FFCC00', rgb: [255, 204, 0] },
+  { name: 'UtahCrimson', hex: '#D3003F', rgb: [211, 0, 63] },
+  { name: 'Vanilla', hex: '#F3E5AB', rgb: [243, 229, 171] },
+  { name: 'VanillaIce', hex: '#F38FA9', rgb: [243, 143, 169] },
+  { name: 'VegasGold', hex: '#C5B358', rgb: [197, 179, 88] },
+  { name: 'VenetianRed', hex: '#C80815', rgb: [200, 8, 21] },
+  { name: 'Verdigris', hex: '#43B3AE', rgb: [67, 179, 174] },
+  { name: 'Vermilion', hex: '#E34234', rgb: [227, 66, 52] },
+  { name: 'Veronica', hex: '#A020F0', rgb: [160, 32, 240] },
+  { name: 'Violet', hex: '#8F00FF', rgb: [143, 0, 255] },
+  { name: 'VioletColorWheel', hex: '#7F00FF', rgb: [127, 0, 255] },
+  { name: 'VioletRYB', hex: '#8601AF', rgb: [134, 1, 175] },
+  { name: 'VioletWeb', hex: '#EE82EE', rgb: [238, 130, 238] },
+  { name: 'Viridian', hex: '#40826D', rgb: [64, 130, 109] },
+  { name: 'VividAmber', hex: '#CC9900', rgb: [204, 153, 0] },
+  { name: 'VividAuburn', hex: '#922724', rgb: [146, 39, 36] },
+  { name: 'VividBurgundy', hex: '#9F1D35', rgb: [159, 29, 53] },
+  { name: 'VividCerise', hex: '#DA1D81', rgb: [218, 29, 129] },
+  { name: 'VividTangerine', hex: '#FFA089', rgb: [255, 160, 137] },
+  { name: 'VividViolet', hex: '#9F00FF', rgb: [159, 0, 255] },
+  { name: 'WarmBlack', hex: '#004242', rgb: [0, 66, 66] },
+  { name: 'Wenge', hex: '#645452', rgb: [100, 84, 82] },
+  { name: 'Wheat', hex: '#F5DEB3', rgb: [245, 222, 179] },
+  { name: 'White', hex: '#FFFFFF', rgb: [255, 255, 255] },
+  { name: 'WhiteSmoke', hex: '#F5F5F5', rgb: [245, 245, 245] },
+  { name: 'WildBlueYonder', hex: '#A2ADD0', rgb: [162, 173, 208] },
+  { name: 'WildStrawberry', hex: '#FF43A4', rgb: [255, 67, 164] },
+  { name: 'WildWatermelon', hex: '#FC6C85', rgb: [252, 108, 133] },
+  { name: 'Wisteria', hex: '#C9A0DC', rgb: [201, 160, 220] },
+  { name: 'Xanadu', hex: '#738678', rgb: [115, 134, 120] },
+  { name: 'YaleBlue', hex: '#0F4D92', rgb: [15, 77, 146] },
+  { name: 'Yellow', hex: '#FFFF00', rgb: [255, 255, 0] },
+  { name: 'YellowCrayola', hex: '#FFF700', rgb: [255, 247, 0] },
+  { name: 'YellowMunsell', hex: '#EFCC00', rgb: [239, 204, 0] },
+  { name: 'YellowNCS', hex: '#FFD300', rgb: [255, 211, 0] },
+  { name: 'YellowPantone', hex: '#FEDF00', rgb: [254, 223, 0] },
+  { name: 'YellowProcess', hex: '#FFEF00', rgb: [255, 239, 0] },
+  { name: 'YellowRYB', hex: '#FEFE33', rgb: [254, 254, 51] },
+  { name: 'YellowGreen', hex: '#9ACD32', rgb: [154, 205, 50] },
+  { name: 'Zaffre', hex: '#0014A8', rgb: [0, 20, 168] },
+  { name: 'ZinnwalditeBrown', hex: '#2C1608', rgb: [44, 22, 8] }
+
+];
+// --- UTILITY FUNCTIONS ---
+let currentDetectedColor = null;
+let currentUser = null;
+
+function rgbToHex(r,g,b){return "#"+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase();}
+function rgbToCmyk(r,g,b){
+  if(r===0&&g===0&&b===0)return [0,0,0,100];
+  let c=1-(r/255),m=1-(g/255),y=1-(b/255);
+  let k=Math.min(c,m,y);
+  c=((c-k)/(1-k))*100; m=((m-k)/(1-k))*100; y=((y-k)/(1-k))*100; k*=100;
+  return [Math.round(c),Math.round(m),Math.round(y),Math.round(k)];
+}
+function findClosestColor(r,g,b){
+  let closest=null,minDist=Infinity;
+  colors.forEach(c=>{
+    const [cr,cg,cb]=c.rgb;
+    const dist=Math.sqrt((r-cr)**2+(g-cg)**2+(b-cb)**2);
+    if(dist<minDist){minDist=dist; closest=c.name;}
+  });
+  return closest;
+}
+function displayColorInfo(name,hex,rgb){
+  const cmyk = rgbToCmyk(...rgb);
+  document.getElementById('colorPreview').style.background=hex;
+  document.getElementById('colorDetails').innerHTML=`
+    <div class="color-name">${name}</div>
+    <div class="detail-row"><div class="detail-label">HEX</div><div class="detail-value">${hex}</div></div>
+    <div class="detail-row"><div class="detail-label">RGB</div><div class="detail-value">rgb(${rgb.join(', ')})</div></div>
+    <div class="detail-row"><div class="detail-label">CMYK</div><div class="detail-value">cmyk(${cmyk.join(', ')})</div></div>
+  `;
+  document.getElementById('copyBtn').disabled=false;
+  document.getElementById('downloadBtn').disabled=false;
+}
+
+// --- LOGIN ---
+const loginForm=document.getElementById('loginForm');
+const usernameInput=document.getElementById('username');
+const passwordInput=document.getElementById('password');
+
+loginForm.addEventListener('submit',e=>{
+  e.preventDefault();
+  if(usernameInput.value.trim().length>=3 && passwordInput.value.length>=6){
+    currentUser=usernameInput.value;
+    document.getElementById('loginPage').classList.add('hidden');
+    document.getElementById('appPage').classList.remove('hidden');
+    loginForm.reset();
+  }else{
+    if(usernameInput.value.trim().length<3){usernameInput.parentElement.classList.add('error');usernameInput.parentElement.querySelector('.error-message').textContent='Username min 3 chars';usernameInput.parentElement.querySelector('.error-message').classList.add('show');}
+    else{usernameInput.parentElement.classList.remove('error');usernameInput.parentElement.querySelector('.error-message').classList.remove('show');}
+    if(passwordInput.value.length<6){passwordInput.parentElement.classList.add('error');passwordInput.parentElement.querySelector('.error-message').textContent='Password min 6 chars';passwordInput.parentElement.querySelector('.error-message').classList.add('show');}
+    else{passwordInput.parentElement.classList.remove('error');passwordInput.parentElement.querySelector('.error-message').classList.remove('show');}
+  }
+});
+
+// --- LOGOUT & DARK MODE ---
+document.getElementById('logoutBtn').addEventListener('click',()=>{currentUser=null;currentDetectedColor=null;document.getElementById('appPage').classList.add('hidden');document.getElementById('loginPage').classList.remove('hidden');document.getElementById('imagePreview').classList.remove('show');document.getElementById('colorDetails').innerHTML='<div class="placeholder-text">Upload an image and click on it to detect colors</div>';document.getElementById('copyBtn').disabled=true;document.getElementById('downloadBtn').disabled=true;});
+const darkModeToggle=document.getElementById('darkModeToggle');
+darkModeToggle.addEventListener('click',()=>{document.body.classList.toggle('dark-mode');darkModeToggle.textContent=document.body.classList.contains('dark-mode')?'☀️ Light Mode':'🌙 Dark Mode';});
+window.addEventListener('load',()=>{if(localStorage.getItem('darkMode')==='true'){document.body.classList.add('dark-mode');darkModeToggle.textContent='☀️ Light Mode';}});
+
+// --- IMAGE UPLOAD & DRAGDROP ---
+const uploadArea=document.getElementById('uploadArea');
+const imageInput=document.getElementById('imageInput');
+const previewImage=document.getElementById('previewImage');
+const imagePreview=document.getElementById('imagePreview');
+uploadArea.addEventListener('click',()=>imageInput.click());
+imageInput.addEventListener('change',()=>{const file=imageInput.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{previewImage.src=e.target.result;imagePreview.classList.add('show');};reader.readAsDataURL(file);});
+uploadArea.addEventListener('dragover',e=>{e.preventDefault();uploadArea.classList.add('dragover');});
+uploadArea.addEventListener('dragleave',()=>uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop',e=>{e.preventDefault();uploadArea.classList.remove('dragover');if(e.dataTransfer.files.length){imageInput.files=e.dataTransfer.files;const reader=new FileReader();reader.onload=e=>{previewImage.src=e.target.result;imagePreview.classList.add('show');};reader.readAsDataURL(e.dataTransfer.files[0]);}});
+
+// --- COLOR DETECTION ---
+previewImage.addEventListener('click',e=>{
+  const canvas=document.createElement('canvas');
+  const ctx=canvas.getContext('2d');
+  canvas.width=previewImage.naturalWidth;
+  canvas.height=previewImage.naturalHeight;
+  ctx.drawImage(previewImage,0,0);
+  const rect=previewImage.getBoundingClientRect();
+  const scaleX=previewImage.naturalWidth/rect.width;
+  const scaleY=previewImage.naturalHeight/rect.height;
+  const startX=Math.floor((e.clientX-rect.left)*scaleX-5);
+  const startY=Math.floor((e.clientY-rect.top)*scaleY-5);
+  let detectedColors=[];
+  for(let i=0;i<10;i++){for(let j=0;j<10;j++){
+    const p=ctx.getImageData(startX+i,startY+j,1,1).data;
+    const [r,g,b]=p;const hex=rgbToHex(r,g,b);const name=findClosestColor(r,g,b);
+    detectedColors.push({name,hex,rgb:[r,g,b],cmyk:rgbToCmyk(r,g,b)});
+  }}
+  const uniqueColors=Array.from(new Map(detectedColors.map(c=>[c.hex,c])).values());
+  currentDetectedColor=uniqueColors[0];
+  displayColorInfo(currentDetectedColor.name,currentDetectedColor.hex,currentDetectedColor.rgb);
+});
+
+// --- COPY & DOWNLOAD ---
+const copyBtn=document.getElementById('copyBtn');const downloadBtn=document.getElementById('downloadBtn');const copyFeedback=document.getElementById('copyFeedback');
+copyBtn.addEventListener('click',()=>{if(currentDetectedColor){navigator.clipboard.writeText(currentDetectedColor.hex);copyFeedback.classList.add('show');setTimeout(()=>copyFeedback.classList.remove('show'),1500);}});
+downloadBtn.addEventListener('click',()=>{if(!currentDetectedColor)return;let content=`Color Name: ${currentDetectedColor.name}\nHEX: ${currentDetectedColor.hex}\nRGB: rgb(${currentDetectedColor.rgb.join(', ')})\nCMYK: cmyk(${currentDetectedColor.cmyk.join(', ')})\n`; const blob=new Blob([content],{type:'text/plain'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='color-info.txt'; a.click(); URL.revokeObjectURL(url);});
+</script>
+</body>
+</html>
